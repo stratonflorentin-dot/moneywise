@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { Suspense } from "react";
 import { Plus, AlertCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,7 +14,7 @@ import { Progress } from "@/components/ui/progress";
 import { supabase, Transaction, Budget, CATEGORIES, formatCurrency, Currency } from "@/lib/supabase";
 import { useSearchParams } from "next/navigation";
 
-export default function BudgetsPage() {
+function BudgetsContent() {
   const searchParams = useSearchParams();
   const currency = (searchParams.get("currency") as Currency) || "TZS";
   
@@ -250,5 +251,13 @@ export default function BudgetsPage() {
         </Card>
       )}
     </main>
+  );
+}
+
+export default function BudgetsPage() {
+  return (
+    <Suspense fallback={<div className="p-6">Loading...</div>}>
+      <BudgetsContent />
+    </Suspense>
   );
 }
