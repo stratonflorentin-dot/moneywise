@@ -25,6 +25,7 @@ export const initialCategories: Category[] = [
   { id: "9", name: "Dining Out", type: "expense" },
   { id: "10", name: "Health", type: "expense" },
   { id: "11", name: "Shopping", type: "expense" },
+  { id: "12", name: "Investment", type: "expense" },
 ];
 
 const today = new Date();
@@ -41,4 +42,5 @@ export const initialTransactions: Transaction[] = [
     { id: '8', amount: 35, date: new Date(firstDayOfMonth.setDate(18)), type: 'expense', category: 'Entertainment', notes: 'Movie night' },
     { id: '9', amount: 250, date: new Date(firstDayOfMonth.setDate(20)), type: 'expense', category: 'Shopping', notes: 'New clothes' },
     { id: '10', amount: 65, date: new Date(firstDayOfMonth.setDate(22)), type: 'expense', category: 'Health', notes: 'Pharmacy' },
+    { id: '11', amount: 500, date: new Date(firstDayOfMonth.setDate(25)), type: 'expense', category: 'Investment', notes: 'Stock market' },
 ];
