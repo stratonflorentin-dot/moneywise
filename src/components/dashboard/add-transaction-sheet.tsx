@@ -5,12 +5,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
-import { type Transaction, type Category } from "@/lib/data";
+import { supabase, CATEGORIES, type Transaction } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
-import {
-  transactionSchema,
-  type TransactionFormValues,
-} from "@/lib/schemas";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -40,19 +36,26 @@ import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { useToast } from "@/hooks/use-toast";
+import * as z from "zod";
+
+const transactionSchema = z.object({
+  type: z.enum(["income", "expense"]),
+  amount: z.number().min(0.01, "Amount must be greater than 0"),
+  category: z.string().min(1, "Category is required"),
+  date: z.date(),
+  notes: z.string().optional(),
+});
+
+type TransactionFormValues = z.infer<typeof transactionSchema>;
 
 interface AddTransactionSheetProps {
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
-  addTransaction: (transaction: Omit<Transaction, "id">) => void;
-  categories: Category[];
 }
 
 export function AddTransactionSheet({
   isOpen,
   setIsOpen,
-  addTransaction,
-  categories,
 }: AddTransactionSheetProps) {
   const { toast } = useToast();
   const form = useForm<TransactionFormValues>({
@@ -62,16 +65,12 @@ export function AddTransactionSheet({
       date: new Date(),
       amount: 0,
       notes: "",
+      category: "",
     },
   });
 
   const transactionType = form.watch("type");
 
-  const filteredCategories = React.useMemo(
-    () => categories.filter((c) => c.type === transactionType),
-    [categories, transactionType]
-  );
-  
   React.useEffect(() => {
     form.reset({
       type: "expense",
@@ -82,18 +81,32 @@ export function AddTransactionSheet({
     });
   }, [isOpen, form]);
 
-  React.useEffect(() => {
-    form.setValue("category", "");
-  }, [transactionType, form]);
-
-  function onSubmit(data: TransactionFormValues) {
-    addTransaction(data);
+  async function onSubmit(data: TransactionFormValues) {
+    const { error } = await supabase.from("transactions").insert([{
+      type: data.type,
+      amount: data.amount,
+      category: data.category,
+      date: format(data.date, "yyyy-MM-dd"),
+      note: data.notes || null,
+      is_recurring: false,
+    }]);
+    
+    if (error) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setIsOpen(false);
     toast({
       title: "Success",
       description: "Transaction added successfully.",
-      variant: "default",
     });
+    // Refresh the page to show new data
+    window.location.reload();
   }
 
   return (
@@ -167,10 +180,10 @@ export function AddTransactionSheet({
                         <SelectValue placeholder="Select a category" />
                       </SelectTrigger>
                     </FormControl>
-                    <SelectContent>
-                      {filteredCategories.map((cat) => (
-                        <SelectItem key={cat.id} value={cat.name}>
-                          {cat.name}
+                    <SelectContent className="bg-[#1e293b] border-white/20">
+                      {CATEGORIES.map((cat) => (
+                        <SelectItem key={cat} value={cat} className="text-gray-300 focus:bg-cyan-500/20 focus:text-cyan-400">
+                          {cat}
                         </SelectItem>
                       ))}
                     </SelectContent>

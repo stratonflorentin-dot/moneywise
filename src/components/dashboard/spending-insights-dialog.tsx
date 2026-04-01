@@ -16,18 +16,12 @@ import { Skeleton } from "../ui/skeleton";
 import { ScrollArea } from "../ui/scroll-area";
 import { Separator } from "../ui/separator";
 import { Badge } from "../ui/badge";
+import type { Transaction } from "@/lib/supabase";
 
 interface SpendingInsightsDialogProps {
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
-  transactions: {
-    id: string;
-    amount: number;
-    type: "income" | "expense";
-    category: string;
-    date: string;
-    notes?: string;
-  }[];
+  transactions: Transaction[];
 }
 
 export function SpendingInsightsDialog({ isOpen, setIsOpen, transactions }: SpendingInsightsDialogProps) {

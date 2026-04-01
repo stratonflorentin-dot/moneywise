@@ -2,17 +2,22 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   FilePlus,
   LayoutDashboard,
   Settings,
   AreaChart,
   Lightbulb,
-  Plus
+  Plus,
+  Wallet,
+  PiggyBank,
+  Target,
+  Receipt,
+  Cog,
+  User,
+  LogOut,
 } from "lucide-react";
-import { type Category, type Transaction } from "@/lib/data";
-import { initialCategories, initialTransactions } from "@/lib/mock-data";
 import {
   SidebarProvider,
   Sidebar,
@@ -30,122 +35,166 @@ import { Logo } from "@/components/logo";
 import { AddTransactionSheet } from "@/components/dashboard/add-transaction-sheet";
 import { SpendingInsightsDialog } from "@/components/dashboard/spending-insights-dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { createClient } from "@/lib/supabase-browser";
+import { Transaction } from "@/lib/supabase";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const [transactions, setTransactions] = React.useState<Transaction[]>(initialTransactions);
-  const [categories, setCategories] = React.useState<Category[]>(initialCategories);
+  const router = useRouter();
   const [isSheetOpen, setSheetOpen] = React.useState(false);
   const [isInsightsOpen, setInsightsOpen] = React.useState(false);
+  const [transactions, setTransactions] = React.useState<Transaction[]>([]);
+  const [isLoading, setIsLoading] = React.useState(true);
 
-  const addTransaction = (transaction: Omit<Transaction, "id">) => {
-    setTransactions((prev) => [
-      { ...transaction, id: crypto.randomUUID() },
-      ...prev,
-    ]);
-  };
-  
-  const formattedTransactionsForAI = transactions.map(t => ({
-    ...t,
-    date: t.date.toISOString(),
-  }));
+  // Check auth on mount
+  React.useEffect(() => {
+    async function checkAuth() {
+      const supabase = createClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        router.push('/login');
+      } else {
+        setIsLoading(false);
+      }
+    }
+    checkAuth();
+  }, [router]);
+
+  // Fetch transactions for insights dialog
+  React.useEffect(() => {
+    async function fetchTransactions() {
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from('transactions')
+        .select('*')
+        .order('date', { ascending: false });
+      
+      if (!error && data) {
+        setTransactions(data);
+      }
+    }
+    fetchTransactions();
+  }, []);
 
   const pageTitle = pathname.split('/').pop();
   const capitalizedTitle = pageTitle ? pageTitle.charAt(0).toUpperCase() + pageTitle.slice(1) : 'Dashboard';
 
   return (
     <SidebarProvider>
-      <AddTransactionSheet
-        isOpen={isSheetOpen}
-        setIsOpen={setSheetOpen}
-        addTransaction={addTransaction}
-        categories={categories}
-      />
+      <AddTransactionSheet isOpen={isSheetOpen} setIsOpen={setSheetOpen} />
       <SpendingInsightsDialog 
-        isOpen={isInsightsOpen}
-        setIsOpen={setInsightsOpen}
-        transactions={formattedTransactionsForAI}
+        isOpen={isInsightsOpen} 
+        setIsOpen={setInsightsOpen} 
+        transactions={transactions}
       />
-
-      <Sidebar>
+      <Sidebar className="border-r border-white/10 bg-[#0f172a]/95 backdrop-blur-xl">
         <SidebarContent>
-          <SidebarHeader>
-            <div className="flex items-center gap-2">
-              <Logo className="size-8 text-sidebar-primary" />
-              <span className="text-lg font-semibold text-sidebar-foreground">
-                MoneyWise
-              </span>
+          <SidebarHeader className="border-b border-white/10 pb-4">
+            <div className="flex items-center gap-3 px-2">
+              <Logo width={40} height={40} className="rounded-xl" />
+              <div>
+                <span className="text-lg font-bold bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">
+                  MONEY-WISE
+                </span>
+                <p className="text-xs text-gray-500">Finance Management</p>
+              </div>
             </div>
           </SidebarHeader>
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <Link href="/dashboard" className="w-full">
-                <SidebarMenuButton isActive={pathname.startsWith('/dashboard')}>
-                  <LayoutDashboard />
-                  Dashboard
-                </SidebarMenuButton>
-              </Link>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-                <Link href="/reports" className="w-full">
-                    <SidebarMenuButton isActive={pathname.startsWith('/reports')}>
-                        <AreaChart />
-                        Reports
-                    </SidebarMenuButton>
-                </Link>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton onClick={() => setSheetOpen(true)} className="bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90 hover:text-sidebar-primary-foreground">
-                <FilePlus />
-                New Transaction
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          </SidebarMenu>
+          <nav className="flex-1 px-2 py-4 space-y-1">
+            <Link href="/dashboard" className={pathname === '/dashboard' ? 'block' : 'block'}>
+              <div className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all ${pathname.startsWith('/dashboard') ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : 'text-gray-400 hover:bg-white/5 hover:text-gray-300'}`}>
+                <LayoutDashboard className="h-5 w-5" />
+                <span className="font-medium">Dashboard</span>
+              </div>
+            </Link>
+            <Link href="/transactions" className="block">
+              <div className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all ${pathname.startsWith('/transactions') ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : 'text-gray-400 hover:bg-white/5 hover:text-gray-300'}`}>
+                <Receipt className="h-5 w-5" />
+                <span className="font-medium">Transactions</span>
+              </div>
+            </Link>
+            <Link href="/budgets" className="block">
+              <div className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all ${pathname.startsWith('/budgets') ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : 'text-gray-400 hover:bg-white/5 hover:text-gray-300'}`}>
+                <Wallet className="h-5 w-5" />
+                <span className="font-medium">Budgets</span>
+              </div>
+            </Link>
+            <Link href="/goals" className="block">
+              <div className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all ${pathname.startsWith('/goals') ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : 'text-gray-400 hover:bg-white/5 hover:text-gray-300'}`}>
+                <Target className="h-5 w-5" />
+                <span className="font-medium">Goals</span>
+              </div>
+            </Link>
+            <Link href="/debts" className="block">
+              <div className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all ${pathname.startsWith('/debts') ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : 'text-gray-400 hover:bg-white/5 hover:text-gray-300'}`}>
+                <PiggyBank className="h-5 w-5" />
+                <span className="font-medium">Debts</span>
+              </div>
+            </Link>
+            <Link href="/reports" className="block">
+              <div className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all ${pathname.startsWith('/reports') ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : 'text-gray-400 hover:bg-white/5 hover:text-gray-300'}`}>
+                <AreaChart className="h-5 w-5" />
+                <span className="font-medium">Reports</span>
+              </div>
+            </Link>
+            <Link href="/settings" className="block">
+              <div className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all ${pathname.startsWith('/settings') ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : 'text-gray-400 hover:bg-white/5 hover:text-gray-300'}`}>
+                <Cog className="h-5 w-5" />
+                <span className="font-medium">Settings</span>
+              </div>
+            </Link>
+          </nav>
         </SidebarContent>
-        <SidebarFooter>
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton>
-                <Settings />
-                Settings
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton>
-                <Avatar className="size-7">
-                  <AvatarImage src="https://picsum.photos/seed/12/100/100" data-ai-hint="profile picture" />
-                  <AvatarFallback>JD</AvatarFallback>
-                </Avatar>
-                John Doe
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          </SidebarMenu>
+        <SidebarFooter className="border-t border-white/10 p-4">
+          <button 
+            onClick={() => setSheetOpen(true)}
+            className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-medium py-3 rounded-lg transition-all shadow-[0_0_20px_rgba(6,182,212,0.3)] hover:shadow-[0_0_30px_rgba(6,182,212,0.5)]"
+          >
+            <Plus className="h-5 w-5" />
+            New Transaction
+          </button>
+          <div className="mt-4 flex items-center gap-3 px-3 py-2 rounded-lg bg-white/5">
+            <div className="h-9 w-9 rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center">
+              <User className="h-4 w-4 text-white" />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-medium text-gray-300">User</p>
+              <p className="text-xs text-gray-500">Free Plan</p>
+            </div>
+            <button
+              onClick={async () => {
+                const supabase = createClient();
+                await supabase.auth.signOut();
+                router.push('/login');
+              }}
+              className="p-2 rounded-lg hover:bg-white/10 text-gray-400 hover:text-red-400 transition-colors"
+              title="Logout"
+            >
+              <LogOut className="h-4 w-4" />
+            </button>
+          </div>
         </SidebarFooter>
       </Sidebar>
 
-      <SidebarInset>
-         <header className="flex items-center justify-between border-b p-4 sm:p-6">
+      <SidebarInset className="bg-transparent">
+         <header className="flex items-center justify-between border-b border-white/10 bg-[#0f172a]/50 backdrop-blur-xl p-4 sm:p-6">
           <div className="flex items-center gap-4">
-             <SidebarTrigger className="md:hidden" />
-            <h1 className="text-2xl font-bold">{capitalizedTitle}</h1>
+             <SidebarTrigger className="md:hidden text-gray-400" />
+            <h1 className="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">{capitalizedTitle}</h1>
           </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={() => setInsightsOpen(true)}>
-              <Lightbulb className="mr-2 size-4" />
-              Spending Insights
-            </Button>
-            <Button onClick={() => setSheetOpen(true)}>
-              <Plus className="mr-2 size-4" /> Add Transaction
+          <div className="flex items-center gap-3">
+            <Button 
+              variant="outline" 
+              onClick={() => setInsightsOpen(true)}
+              className="border-white/20 bg-white/5 hover:bg-white/10 text-gray-300"
+            >
+              <Lightbulb className="mr-2 h-4 w-4 text-amber-400" />
+              Insights
             </Button>
           </div>
         </header>
-        {/* Pass state to children pages */}
-        {React.Children.map(children, child => {
-          if (React.isValidElement(child)) {
-            return React.cloneElement(child, { transactions, categories, setTransactions } as any);
-          }
-          return child;
-        })}
+        {children}
       </SidebarInset>
     </SidebarProvider>
   );
