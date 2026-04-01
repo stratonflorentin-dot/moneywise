@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { format } from "date-fns";
 import {
   Table,
   TableBody,
@@ -28,6 +29,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface RecentTransactionsProps {
   transactions: Transaction[];
@@ -38,10 +40,17 @@ type SortKey = keyof Transaction | null;
 export function RecentTransactions({
   transactions,
 }: RecentTransactionsProps) {
+  const [isClient, setIsClient] = React.useState(false);
   const [filter, setFilter] = React.useState("all");
   const [searchTerm, setSearchTerm] = React.useState("");
   const [sortKey, setSortKey] = React.useState<SortKey>(null);
-  const [sortDirection, setSortDirection] = React.useState<"asc" | "desc">("asc");
+  const [sortDirection, setSortDirection] = React.useState<"asc" | "desc">(
+    "asc"
+  );
+
+  React.useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   const handleSort = (key: SortKey) => {
     if (sortKey === key) {
@@ -65,44 +74,60 @@ export function RecentTransactions({
           t.notes?.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
-    
+
     if (sortKey) {
-        filtered.sort((a, b) => {
-            const valA = a[sortKey];
-            const valB = b[sortKey];
+      filtered.sort((a, b) => {
+        const valA = a[sortKey];
+        const valB = b[sortKey];
 
-            if (valA === undefined || valB === undefined) return 0;
+        if (valA === undefined || valB === undefined) return 0;
 
-            let comparison = 0;
-            if (valA > valB) {
-                comparison = 1;
-            } else if (valA < valB) {
-                comparison = -1;
-            }
-            return sortDirection === 'asc' ? comparison : -comparison;
-        });
+        let comparison = 0;
+        if (valA > valB) {
+          comparison = 1;
+        } else if (valA < valB) {
+          comparison = -1;
+        }
+        return sortDirection === "asc" ? comparison : -comparison;
+      });
     } else {
-        // Default sort by date descending
-        filtered.sort((a,b) => b.date.getTime() - a.date.getTime());
+      // Default sort by date descending
+      filtered.sort((a, b) => b.date.getTime() - a.date.getTime());
     }
 
     return filtered;
   }, [transactions, filter, searchTerm, sortKey, sortDirection]);
-  
-  const SortableHeader = ({ tkey, label }: { tkey: SortKey, label: string}) => (
-    <TableHead onClick={() => handleSort(tkey)} className="cursor-pointer hover:bg-muted/50">
-        <div className="flex items-center gap-2">
-            {label}
-            {sortKey === tkey && (sortDirection === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />)}
-        </div>
+
+  const SortableHeader = ({
+    tkey,
+    label,
+  }: {
+    tkey: SortKey;
+    label: string;
+  }) => (
+    <TableHead
+      onClick={() => handleSort(tkey)}
+      className="cursor-pointer hover:bg-muted/50"
+    >
+      <div className="flex items-center gap-2">
+        {label}
+        {sortKey === tkey &&
+          (sortDirection === "asc" ? (
+            <ArrowUp className="h-3 w-3" />
+          ) : (
+            <ArrowDown className="h-3 w-3" />
+          ))}
+      </div>
     </TableHead>
-  )
+  );
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>Transaction History</CardTitle>
-        <CardDescription>A chronological list of all your transactions.</CardDescription>
+        <CardDescription>
+          A chronological list of all your transactions.
+        </CardDescription>
         <div className="flex items-center gap-2 pt-4">
           <Input
             placeholder="Filter by category or notes..."
@@ -110,16 +135,19 @@ export function RecentTransactions({
             onChange={(e) => setSearchTerm(e.target.value)}
             className="max-w-sm"
           />
-          <Select value={filter} onValueChange={setFilter}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Filter by type" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All</SelectItem>
-              <SelectItem value="income">Income</SelectItem>
-              <SelectItem value="expense">Expense</SelectItem>
-            </SelectContent>
-          </Select>
+          {!isClient && <Skeleton className="h-10 w-[180px]" />}
+          {isClient && (
+            <Select value={filter} onValueChange={setFilter}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Filter by type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="income">Income</SelectItem>
+                <SelectItem value="expense">Expense</SelectItem>
+              </SelectContent>
+            </Select>
+          )}
         </div>
       </CardHeader>
       <CardContent>
@@ -141,7 +169,9 @@ export function RecentTransactions({
                     <TableCell>
                       <Badge
                         variant={
-                          transaction.type === "income" ? "default" : "secondary"
+                          transaction.type === "income"
+                            ? "default"
+                            : "secondary"
                         }
                         className={
                           transaction.type === "income"
@@ -156,10 +186,10 @@ export function RecentTransactions({
                       {formatCurrency(transaction.amount)}
                     </TableCell>
                     <TableCell>{transaction.category}</TableCell>
-                    <TableCell>
-                      {transaction.date.toLocaleDateString()}
+                    <TableCell>{format(transaction.date, "P")}</TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {transaction.notes || "-"}
                     </TableCell>
-                    <TableCell className="text-muted-foreground">{transaction.notes || "-"}</TableCell>
                   </TableRow>
                 ))
               ) : (
