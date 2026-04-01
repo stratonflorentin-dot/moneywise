@@ -8,7 +8,8 @@ import {
   Plus,
   Settings,
 } from "lucide-react";
-import { initialCategories, initialTransactions, type Category, type Transaction } from "@/lib/data";
+import { type Category, type Transaction } from "@/lib/data";
+import { initialCategories, initialTransactions } from "@/lib/mock-data";
 import {
   SidebarProvider,
   Sidebar,
